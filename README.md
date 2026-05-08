@@ -27,7 +27,7 @@ f_s_receive     = sampling frequency of received pulse (1/dt_receive);
 chirp_freq1     = start frequency of linear chirp sweep; 
 chirp_freq2     = end frequency of linear chirp sweep; 
 chirp_length    = duration of linear chirp sweep; 
-chirp_alpha     = alpha of chirp gaussian created by gausswin; 
+chirp_alpha     = alpha of chirp gaussian created by the local gaussian_window helper; 
 chirp_t         = time array of outgoing chirp; 
 receive_length  = duration of sbp receiving; 
 receive_t       = time array of received signal receive_t=0 at beginning of outgoing pulse;
@@ -45,4 +45,3 @@ Output:
 text file containing resonance characteristics, 
 text file containing model settings, 
 2D sbp profile, 
-

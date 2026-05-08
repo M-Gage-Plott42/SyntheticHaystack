@@ -19,19 +19,27 @@ Last Edit: Margaret Morris, February 6, 2026
 
 %% Problem Setup:
 
+script_dir = string(fileparts(mfilename('fullpath')));
+if strlength(script_dir) == 0
+    script_dir = string(pwd);
+end
+data_path = fullfile(script_dir, "data");
+
 save_run = 1; % 1 to save | 0 no save. saves settings, resonator characteristics and seismic plot.
-save_path = "/Users/mam132/Dropbox/Archaeology_Active/SyntheticHaystack/model_output/";
+save_path = fullfile(script_dir, "model_output");
 save_tag = "_"+datestr(datetime('now'), 'yyyyMMdd_HHmmss');
 
 reload_model_settings = 0; % 1 to reload model settings for a previously saved model, 0 to run new, other numbers will repeat last run
 reload_res_settings = 0;   % 1 to reload resonator settings for a previously saved model, 0 to run new, other numbers will repeat last run
-run_load = '420kHz_20265909_150207';
-run_path = '/Users/mam132/Dropbox/Archaeology_Active/SyntheticHaystack/model_output/';
+run_load = "420kHz_20265909_150207";
+run_path = save_path;
 
-datapath_load = '/Users/mam132/Dropbox/Archaeology_Active/LithicDetection/'; % path to measured frequency distributions
+datapath_load = data_path; % path to measured frequency distributions
+target_strength_file = fullfile(data_path, "TS_max_atphi_test.mat");
+rng(1);
 
 if reload_model_settings == 1 % load a previous run's model settings
-    model_settings = readtable([run_path 'model_settings_' run_load '.txt']);
+    model_settings = readtable(fullfile(run_path, "model_settings_" + run_load + ".txt"));
     sbp_dx       = model_settings.sbp_dx;         sbp_x_max = model_settings.sbp_x_max;
     sbp_height   = model_settings.sbp_height; sbp_beamwidth = model_settings.sbp_beamwidth;
     f_s          = model_settings.f_s;          f_s_receive = model_settings.f_s_receive;
@@ -43,7 +51,7 @@ if reload_model_settings == 1 % load a previous run's model settings
 end
 
 if reload_res_settings == 1 % load a previous run's resonators  
-    res_characters = readtable([run_path 'res_characters_' run_load '.txt']);
+    res_characters = readtable(fullfile(run_path, "res_characters_" + run_load + ".txt"));
     res_freqs  = res_characters.res_freqs;
     res_amps   = res_characters.res_amps;
     res_Qs     = res_characters.res_Qs;
@@ -79,7 +87,7 @@ end
 
 sbp_x           = 0:sbp_dx:sbp_x_max; % [m] array defining horizontal path of sbp
 chirp_t         = 0:dt:chirp_length;  % [s] time array of outgoing chirp
-chirp_envelope  = gausswin(numel(chirp_t), chirp_alpha)';  % gaussian window
+chirp_envelope  = gaussian_window(numel(chirp_t), chirp_alpha)';  % gaussian window
 df              = (chirp_freq2 - chirp_freq1)/chirp_length*dt; % frequency resolution of modeled pulse transmission
 receive_t       = 0:dt:receive_length; % [s] time array of received signal receive_t=0 at beginning of outgoing pulse
 
@@ -98,17 +106,17 @@ if reload_res_settings == 0 % choose new resonator settings
     n_resonators_rand_normal = 100;
     res_freq_mean_rand_normal = 8000;
     res_freq_stdev_rand_normal = 2000;
-    res_freqs_rand_normal = [abs(normrnd(0, res_freq_stdev_rand_normal, [1, n_resonators_rand_normal]) + res_freq_mean_rand_normal)];
+    res_freqs_rand_normal = abs(res_freq_stdev_rand_normal*randn(1, n_resonators_rand_normal) + res_freq_mean_rand_normal);
 
     % to make frequencies with exponentially increasing distribution
     n_resonators_rand_exp = 1000;
-    res_freqs_extra_rand_exp = 24000 - exprnd(8000, [1,50000]); res_freqs_extra_rand_exp(res_freqs_extra_rand_exp<6000) = [];
+    res_freqs_extra_rand_exp = 24000 - (-8000*log(max(rand(1,50000), eps))); res_freqs_extra_rand_exp(res_freqs_extra_rand_exp<6000) = [];
     res_freqs_rand_exp = res_freqs_extra_rand_exp(1:n_resonators_rand_exp);
 
     % to make resonators from measured frequency distributions
-    lwt_C = readtable([datapath_load 'Lithic_Dimensions_PredictedFreqs_Chert.csv']);
-    lwt_O = readtable([datapath_load 'Lithic_Dimensions_PredictedFreqs_Obsidian.csv']);
-    lwt_M = readtable([datapath_load 'Lithic_Dimensions_PredictedFreqs_Metavolcanic.csv']);
+    lwt_C = readtable(fullfile(datapath_load, "Lithic_Dimensions_PredictedFreqs_Chert.csv"));
+    lwt_O = readtable(fullfile(datapath_load, "Lithic_Dimensions_PredictedFreqs_Obsidian.csv"));
+    lwt_M = readtable(fullfile(datapath_load, "Lithic_Dimensions_PredictedFreqs_Metavolcanic.csv"));
     res_freqs_loaded = [lwt_C.Freq1_wet_Hz', lwt_O.Freq1_wet_Hz', lwt_M.Freq1_wet_Hz'];
     
 % % % Choose which resonator distribution above to use here % % %
@@ -130,15 +138,19 @@ if reload_res_settings == 0 % choose new resonator settings
     % horizontal positions of resonators (res_xs = x position from start of chirp path)
     % res_xs          = linspace(4.5, 5.5, n_resonators);    % [m] linear spaced x positions
     res_xs          = 4.75 + (.5)*rand(1,n_resonators);        % [m] uniformly randomly distributed x positions
-    % res_xs          = normrnd(5, 0.25, [1,n_resonators]);  % [m] normally distrubuted x positions
+    % res_xs          = 5 + 0.25*randn(1,n_resonators);  % [m] normally distrubuted x positions
 end
 
 res_characters  = table(res_freqs', res_amps', res_Qs', res_depths', res_xs', 'VariableNames', ["res_freqs", "res_amps", "res_Qs", "res_depths", "res_xs"]);
 model_settings  = table(f_s, f_s_receive, dt, dt_receive, chirp_freq1, chirp_freq2, chirp_length, chirp_alpha, receive_length, sbp_dx, sbp_x_max, sbp_height, sbp_beamwidth, water_c, sediment_reflection_coeff);
 
 if save_run == 1
-    writetable(res_characters, save_path + "res_characters_" + num2str(chirp_freq1/1000) + num2str(chirp_freq2/1000) + "kHz" + save_tag + ".txt")
-    writetable(model_settings, save_path + "model_settings_" + num2str(chirp_freq1/1000) + num2str(chirp_freq2/1000) + "kHz" + save_tag + ".txt")
+    if ~isfolder(save_path)
+        mkdir(save_path)
+    end
+    run_label = string(num2str(chirp_freq1/1000)) + string(num2str(chirp_freq2/1000)) + "kHz" + save_tag;
+    writetable(res_characters, fullfile(save_path, "res_characters_" + run_label + ".txt"))
+    writetable(model_settings, fullfile(save_path, "model_settings_" + run_label + ".txt"))
 end
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
@@ -196,7 +208,7 @@ for ind_sbp_x = 1:length(sbp_x)
 
     res_phis        = atan((sbp_x(ind_sbp_x)-res_xs)./(sbp_height + res_depths));        % [rad]
     sbp_bp          = sbp_beampattern(res_phis, sbp_beamwidth);
-    lithic_bp       = lithic_beampattern(res_phis);
+    lithic_bp       = lithic_beampattern(res_phis, target_strength_file);
     res_rs          = sqrt((sbp_x(ind_sbp_x)-res_xs).^2 + (sbp_height + res_depths).^2); % [m]
     res_t1s         = 2*res_rs./water_c + (res_freqs - chirp_freq1)./df*dt;
     chirp_inds_res  = round((res_freqs - chirp_freq1)./df);
@@ -255,8 +267,8 @@ for ind_sbp_x = 1:length(sbp_x)
 
     % % subsample and resample received wave to mimic lower sampling frequency
     receive_wave = receive_waves(:,ind_sbp_x);
-    [receive_wave_subsampled, t_subsampled] = resample(receive_wave, receive_t, f_s_receive, 10, 100);
-    [receive_wave_resampled, t_resampled] = resample(receive_wave_subsampled, t_subsampled, f_s);
+    [receive_wave_subsampled, t_subsampled] = simple_resample(receive_wave, receive_t, f_s_receive);
+    [receive_wave_resampled, t_resampled] = simple_resample(receive_wave_subsampled, t_subsampled, f_s);
 
     % % % amplitude is cross-correlated return
     % xcorr_amp = xcorr(receive_wave_resampled.', chirp_pulse);
@@ -270,7 +282,7 @@ for ind_sbp_x = 1:length(sbp_x)
 end
 
 % plot receive_amp
-[receive_amp_subsampled, receive_t_subsampled] = resample(receive_amp, receive_t, f_s_receive);
+[receive_amp_subsampled, receive_t_subsampled] = simple_resample(receive_amp, receive_t, f_s_receive);
 [SBP_X, RECEIVE_Depth] = meshgrid(sbp_x, -1*receive_t_subsampled./2*water_c);
 figure()
 surf(SBP_X, RECEIVE_Depth, zeros(size(receive_amp_subsampled)), real(receive_amp_subsampled))
@@ -284,10 +296,17 @@ caxis([-1,1].*1e-4)
 ylim([-10.5 -9.5]); xlim([0 10]);
 h = colorbar(); colormap(default_seismic_colormap)
 ylabel(h, 'xcorr amplitude')
-theme(gcf,"light")
+if exist('theme', 'file') || exist('theme', 'builtin')
+    theme(gcf,"light")
+end
 
 if save_run == 1
-    exportgraphics(gcf, save_path + "model_profile_" + num2str(chirp_freq1/1000) + num2str(chirp_freq2/1000) + "kHz" + save_tag + ".png", "Resolution", 300, PreserveAspectRatio="on")
+    output_png = fullfile(save_path, "model_profile_" + run_label + ".png");
+    if exist('exportgraphics', 'file') || exist('exportgraphics', 'builtin')
+        exportgraphics(gcf, output_png, "Resolution", 300, PreserveAspectRatio="on")
+    else
+        saveas(gcf, output_png)
+    end
 end
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
@@ -299,7 +318,7 @@ plot_sbp_bp = 0
 if plot_sbp_bp == 1
     phis = [-90:.1:90].*pi/180;
     sbp_bp = sbp_beampattern(phis, sbp_beamwidth);
-    lithic_bp = lithic_beampattern(phis);
+    lithic_bp = lithic_beampattern(phis, target_strength_file);
 
     figure(); polarplot(phis, sbp_bp)
     title('SBP Beam Pattern')
@@ -341,12 +360,49 @@ sbp_bp = interp1(phis_full, sbp_bp_full, phis);
 
 end
 
-function lithic_bp = lithic_beampattern(phis)
+function lithic_bp = lithic_beampattern(phis, target_strength_file)
 % lithic beampattern defines amplitude of lithic response with phi
-TS_max_atphi = load('/Users/mam132/Dropbox/Archaeology_Active/SyntheticHaystack/TS_max_atphi.mat');
-lithic_bp_dB = interp1(TS_max_atphi.phis, TS_max_atphi.TS, abs(phis*180/pi), 'cubic')';
-lithic_bp = 10.^(lithic_bp_dB/20); % set =0 if negative
+if nargin < 2 || strlength(string(target_strength_file)) == 0
+    script_dir = string(fileparts(mfilename('fullpath')));
+    if strlength(script_dir) == 0
+        script_dir = string(pwd);
+    end
+    target_strength_file = fullfile(script_dir, "data", "TS_max_atphi_test.mat");
+end
+if ~isfile(target_strength_file)
+    error('SyntheticHaystack:MissingTargetStrengthFile', ...
+        'Missing target-strength response file: %s', char(target_strength_file));
+end
+TS_max_atphi = load(target_strength_file);
+if ~isfield(TS_max_atphi, 'phis') || ~isfield(TS_max_atphi, 'TS')
+    error('SyntheticHaystack:InvalidTargetStrengthFile', ...
+        'Target-strength file must contain variables ''phis'' in degrees and ''TS'' in dB.');
+end
+phis_table = double(TS_max_atphi.phis(:));
+TS_table = double(TS_max_atphi.TS(:));
+[phis_table, sort_idx] = sort(phis_table);
+TS_table = TS_table(sort_idx);
+query_phis = min(max(abs(phis(:)*180/pi), min(phis_table)), max(phis_table));
+lithic_bp_dB = interp1(phis_table, TS_table, query_phis, 'pchip');
+lithic_bp = reshape(10.^(lithic_bp_dB/20), size(phis)); % dB to amplitude ratio
 % lithic_bp = .05+0*lithic_bp;
+end
+
+function w = gaussian_window(n, alpha)
+% Local replacement for gausswin so the demo does not require Signal Processing Toolbox.
+if n <= 1
+    w = ones(n, 1);
+    return
+end
+x = linspace(-1, 1, n)';
+w = exp(-0.5*(alpha*x).^2);
+end
+
+function [y_out, t_out] = simple_resample(y_in, t_in, f_out)
+% Linear-interpolation resampling helper for this standalone demonstration.
+t_in = t_in(:);
+t_out = (t_in(1):1/f_out:t_in(end)).';
+y_out = interp1(t_in, y_in, t_out, 'linear', 0);
 end
 
 function colormatrix=default_seismic_colormap
@@ -365,4 +421,3 @@ down=up(end:-1:1);
 eins=ones(nc,1);
 colormatrix=[up,up,eins;eins,down,down];
 end
-
