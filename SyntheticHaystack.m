@@ -17,7 +17,47 @@ Last Edit: Margaret Morris, February 6, 2026
 %}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function SyntheticHaystack(run_mode)
+
 %% Problem Setup:
+
+if nargin < 1 || strlength(string(run_mode)) == 0
+    run_mode = "default";
+end
+run_mode = lower(string(run_mode));
+valid_modes = ["smoke", "default", "full"];
+if ~any(run_mode == valid_modes)
+    error('SyntheticHaystack:InvalidRunMode', ...
+        'Run mode must be one of: smoke, default, full.');
+end
+
+switch run_mode
+    case "smoke"
+        mode_sbp_dx = 0.25;
+        mode_f_s = 96000;
+        mode_receive_length = 40e-3;
+        mode_n_resonators_rand_exp = 25;
+        mode_show_diagnostic_plots = false;
+        mode_diagnostic_stride = inf;
+    case "default"
+        mode_sbp_dx = 0.0125;
+        mode_f_s = 480000;
+        mode_receive_length = 100e-3;
+        mode_n_resonators_rand_exp = 1000;
+        mode_show_diagnostic_plots = true;
+        mode_diagnostic_stride = 500;
+        warning('SyntheticHaystack:ExpensiveRunMode', ...
+            'Default mode preserves the imported high-cost settings and may take a long time on laptops. Use SyntheticHaystack("smoke") for a quick run.');
+    case "full"
+        mode_sbp_dx = 0.0125;
+        mode_f_s = 480000;
+        mode_receive_length = 100e-3;
+        mode_n_resonators_rand_exp = 1000;
+        mode_show_diagnostic_plots = true;
+        mode_diagnostic_stride = 500;
+        warning('SyntheticHaystack:ExpensiveRunMode', ...
+            'Full mode uses the imported high-cost settings and may take a long time on laptops. Use SyntheticHaystack("smoke") for a quick run.');
+end
 
 script_dir = string(fileparts(mfilename('fullpath')));
 if strlength(script_dir) == 0
@@ -35,7 +75,7 @@ run_load = "420kHz_20265909_150207";
 run_path = save_path;
 
 datapath_load = data_path; % path to measured frequency distributions
-target_strength_file = fullfile(data_path, "TS_max_atphi_test.mat");
+target_strength_file = select_target_strength_file(data_path);
 rng(1);
 
 if reload_model_settings == 1 % load a previous run's model settings
@@ -62,7 +102,7 @@ end
 if reload_model_settings == 0 % choose new model settings
 
     % % SBP, Environment, and Chirp Parameters % %
-    sbp_dx          = .0125;       % step size for sbp (.3m step if 4kts (~2m/s) & 6Hz ping rate; .0125m step if 75cm/s & 6Hz ping rate)
+    sbp_dx          = mode_sbp_dx; % step size for sbp (.3m step if 4kts (~2m/s) & 6Hz ping rate; .0125m step if 75cm/s & 6Hz ping rate)
     sbp_x_max       = 10;          % [m] horizontal path of sbp will go from 0 to sbp_x_max
     sbp_height      = 10.6;        % [m] sbp height above seafloor
     sbp_beamwidth   = 60*pi/180;   % [rad] angle of half-max (-3dB) beam pattern (60 deg means half max at +/-30 deg);
@@ -74,10 +114,10 @@ if reload_model_settings == 0 % choose new model settings
 
     dt_receive  = .023e-3;       % [s] time step from SEGY files is 0.0230 ms
     f_s_receive = 1/dt_receive;  % [Hz] sampling frequency for received signal
-    f_s         = 480000; % [Hz] temporal resolution of modeled pulse transmission
+    f_s         = mode_f_s; % [Hz] temporal resolution of modeled pulse transmission
     dt          = 1/f_s;	     % [s]  temporal resolution of modeled pulse transmission
     
-    receive_length  = 100e-3;    % [s] duration of sbp receiving
+    receive_length  = mode_receive_length; % [s] duration of sbp receiving
 
     water_c         = 1500;         % [m/s] 1500 = speed of sound in water at 80F (1480 closer to 70 F)
     sediment_reflection_coeff = .9; % 0.43 for sediment (Bull Quinn & Dix, 1998, Table 1), higher for concrete
@@ -109,7 +149,7 @@ if reload_res_settings == 0 % choose new resonator settings
     res_freqs_rand_normal = abs(res_freq_stdev_rand_normal*randn(1, n_resonators_rand_normal) + res_freq_mean_rand_normal);
 
     % to make frequencies with exponentially increasing distribution
-    n_resonators_rand_exp = 1000;
+    n_resonators_rand_exp = mode_n_resonators_rand_exp;
     res_freqs_extra_rand_exp = 24000 - (-8000*log(max(rand(1,50000), eps))); res_freqs_extra_rand_exp(res_freqs_extra_rand_exp<6000) = [];
     res_freqs_rand_exp = res_freqs_extra_rand_exp(1:n_resonators_rand_exp);
 
@@ -142,7 +182,7 @@ if reload_res_settings == 0 % choose new resonator settings
 end
 
 res_characters  = table(res_freqs', res_amps', res_Qs', res_depths', res_xs', 'VariableNames', ["res_freqs", "res_amps", "res_Qs", "res_depths", "res_xs"]);
-model_settings  = table(f_s, f_s_receive, dt, dt_receive, chirp_freq1, chirp_freq2, chirp_length, chirp_alpha, receive_length, sbp_dx, sbp_x_max, sbp_height, sbp_beamwidth, water_c, sediment_reflection_coeff);
+model_settings  = table(run_mode, f_s, f_s_receive, dt, dt_receive, chirp_freq1, chirp_freq2, chirp_length, chirp_alpha, receive_length, sbp_dx, sbp_x_max, sbp_height, sbp_beamwidth, water_c, sediment_reflection_coeff);
 
 if save_run == 1
     if ~isfolder(save_path)
@@ -247,7 +287,7 @@ for ind_sbp_x = 1:length(sbp_x)
     receive_waves(:,ind_sbp_x) = scattered_wave + sum(res_waves,1);
 
     % periodically plot chirp reflection and returned resonance waveforms
-    if ismember(ind_sbp_x, 1:500:length(sbp_x))
+    if mode_show_diagnostic_plots && ismember(ind_sbp_x, 1:mode_diagnostic_stride:length(sbp_x))
         figure()
         hold on
         plot(receive_t, real(receive_waves(:,ind_sbp_x)))
@@ -309,6 +349,8 @@ if save_run == 1
     end
 end
 
+end
+
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 %% functions
 
@@ -360,6 +402,23 @@ sbp_bp = interp1(phis_full, sbp_bp_full, phis);
 
 end
 
+function target_strength_file = select_target_strength_file(data_path)
+preferred_file = fullfile(data_path, "TS_max_atphi.mat");
+fallback_file = fullfile(data_path, "TS_max_atphi_test.mat");
+
+if isfile(preferred_file)
+    target_strength_file = preferred_file;
+elseif isfile(fallback_file)
+    warning('SyntheticHaystack:UsingTestTargetStrength', ...
+        'Using fallback smoke-test target-strength file: %s', char(fallback_file));
+    target_strength_file = fallback_file;
+else
+    error('SyntheticHaystack:MissingTargetStrengthFile', ...
+        'Missing target-strength response file. Expected %s or fallback %s.', ...
+        char(preferred_file), char(fallback_file));
+end
+end
+
 function lithic_bp = lithic_beampattern(phis, target_strength_file)
 % lithic beampattern defines amplitude of lithic response with phi
 if nargin < 2 || strlength(string(target_strength_file)) == 0
@@ -367,7 +426,7 @@ if nargin < 2 || strlength(string(target_strength_file)) == 0
     if strlength(script_dir) == 0
         script_dir = string(pwd);
     end
-    target_strength_file = fullfile(script_dir, "data", "TS_max_atphi_test.mat");
+    target_strength_file = select_target_strength_file(fullfile(script_dir, "data"));
 end
 if ~isfile(target_strength_file)
     error('SyntheticHaystack:MissingTargetStrengthFile', ...
