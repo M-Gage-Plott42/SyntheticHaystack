@@ -48,11 +48,11 @@ text file containing model settings,
 
 ## Local MATLAB Run
 
-`SyntheticHaystack.m` is callable as a function with these modes:
+`SyntheticHaystack_run.m` is callable as a function with these modes:
 
-- `SyntheticHaystack("smoke")`: reduced settings for a quick code-path check
-- `SyntheticHaystack("default")`: imported high-cost settings
-- `SyntheticHaystack("full")`: explicit high-cost mode matching the imported settings
+- `SyntheticHaystack_run("smoke")`: reduced settings for a quick code-path check
+- `SyntheticHaystack_run("default")`: imported high-cost settings
+- `SyntheticHaystack_run("full")`: explicit high-cost mode matching the imported settings
 
 The script keeps paths relative to the repository directory, writes output under
 `model_output/`, and requires the real `data/TS_max_atphi.mat` target-strength
@@ -62,6 +62,6 @@ From Windows MATLAB:
 
 ```matlab
 cd('C:\Users\<you>\Desktop\SyntheticHaystack')
-SyntheticHaystack("smoke")
-SyntheticHaystack("default")
+SyntheticHaystack_run("smoke")
+SyntheticHaystack_run("default")
 ```

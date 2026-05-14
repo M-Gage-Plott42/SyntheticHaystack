@@ -17,13 +17,13 @@ Run a quick check from MATLAB:
 
 ```matlab
 cd('C:\Users\<you>\Desktop\SyntheticHaystack')
-SyntheticHaystack("smoke")
+SyntheticHaystack_run("smoke")
 ```
 
 Then run the imported high-cost settings:
 
 ```matlab
-SyntheticHaystack("default")
+SyntheticHaystack_run("default")
 ```
 
 The script writes output under `model_output/` beside the script.
