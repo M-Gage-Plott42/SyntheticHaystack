@@ -1,3 +1,4 @@
+function SyntheticHaystack(run_mode)
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %{
@@ -16,8 +17,6 @@ Last Edit: Margaret Morris, February 6, 2026
 
 %}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function SyntheticHaystack(run_mode)
 
 %% Problem Setup:
 
