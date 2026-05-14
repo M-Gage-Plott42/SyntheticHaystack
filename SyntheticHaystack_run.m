@@ -348,8 +348,6 @@ if save_run == 1
     end
 end
 
-end
-
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 %% functions
 
@@ -384,6 +382,8 @@ if plot_sbp_bp == 1
     pax.ThetaTickLabel{11}='-60°'
     pax.ThetaTickLabel{12}='-30°'
     pax.ThetaZeroLocation = 'top'
+end
+
 end
 
 function sbp_bp = sbp_beampattern(phis, sbp_beamwidth)
