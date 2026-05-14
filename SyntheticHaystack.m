@@ -75,7 +75,7 @@ run_load = "420kHz_20265909_150207";
 run_path = save_path;
 
 datapath_load = data_path; % path to measured frequency distributions
-target_strength_file = select_target_strength_file(data_path);
+target_strength_file = fullfile(data_path, "TS_max_atphi.mat");
 rng(1);
 
 if reload_model_settings == 1 % load a previous run's model settings
@@ -402,23 +402,6 @@ sbp_bp = interp1(phis_full, sbp_bp_full, phis);
 
 end
 
-function target_strength_file = select_target_strength_file(data_path)
-preferred_file = fullfile(data_path, "TS_max_atphi.mat");
-fallback_file = fullfile(data_path, "TS_max_atphi_test.mat");
-
-if isfile(preferred_file)
-    target_strength_file = preferred_file;
-elseif isfile(fallback_file)
-    warning('SyntheticHaystack:UsingTestTargetStrength', ...
-        'Using fallback smoke-test target-strength file: %s', char(fallback_file));
-    target_strength_file = fallback_file;
-else
-    error('SyntheticHaystack:MissingTargetStrengthFile', ...
-        'Missing target-strength response file. Expected %s or fallback %s.', ...
-        char(preferred_file), char(fallback_file));
-end
-end
-
 function lithic_bp = lithic_beampattern(phis, target_strength_file)
 % lithic beampattern defines amplitude of lithic response with phi
 if nargin < 2 || strlength(string(target_strength_file)) == 0
@@ -426,7 +409,7 @@ if nargin < 2 || strlength(string(target_strength_file)) == 0
     if strlength(script_dir) == 0
         script_dir = string(pwd);
     end
-    target_strength_file = select_target_strength_file(fullfile(script_dir, "data"));
+    target_strength_file = fullfile(script_dir, "data", "TS_max_atphi.mat");
 end
 if ~isfile(target_strength_file)
     error('SyntheticHaystack:MissingTargetStrengthFile', ...

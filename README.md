@@ -55,8 +55,8 @@ text file containing model settings,
 - `SyntheticHaystack("full")`: explicit high-cost mode matching the imported settings
 
 The script keeps paths relative to the repository directory, writes output under
-`model_output/`, and uses `data/TS_max_atphi.mat` when present. If the real
-target-strength file is absent, it falls back to `data/TS_max_atphi_test.mat`.
+`model_output/`, and requires the real `data/TS_max_atphi.mat` target-strength
+file.
 
 From Windows MATLAB:
 
